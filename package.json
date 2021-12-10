@@ -7,8 +7,8 @@
     "ruinguard",
     "moderation"
   ],
-  "homepage": "https://github.com/SayuMains/RuinGuard#readme",
-  "bugs": "https://github.com/SayuMains/RuinGuard/issues",
+  "homepage": "https://github.com/Khaenri-ah/ruinguard-moderation#readme",
+  "bugs": "https://github.com/Khaenri-ah/ruinguard-moderation/issues",
   "type": "module",
   "author": {
     "name": "AroLeaf",
@@ -27,8 +27,7 @@
   "main": "./index.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/SayuMains/RuinGuard.git",
-    "directory": "moderation/"
+    "url": "https://github.com/Khaenri-ah/ruinguard-moderation.git"
   },
   "exports": "./index.js",
   "dependencies": {
@@ -38,6 +37,6 @@
     "ms": "^2.1.3"
   },
   "devDependencies": {
-    "@ruinguard/core": "file:../core"
+    "@ruinguard/core": "file:../ruinguard-core"
   }
 }
