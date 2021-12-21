@@ -15,6 +15,7 @@ export default new Command({
         type: 3,
         name: 'duration',
         description: 'for how long to mute this user',
+        required: true,
       }, {
         type: 3,
         name: 'reason',
@@ -24,14 +25,14 @@ export default new Command({
   },
   flags: [1<<1],
   permissions: {
-    user: [1n<<13n],
-    self: [1n<<28n],
+    user: [1n<<40n],
+    self: [1n<<40n],
   },
 
   async run(interaction) {
     const user = await interaction.options.getUser('user');
     const member = await interaction.guild.members.fetch(user.id).catch(() => {});
-    const reason = interaction.options.getString('reason', false)||'no reason provided';
+    const reason = interaction.options.getString('reason', false) || `muted by ${interaction.user}`;
     const duration = ms(interaction.options.getString('duration')||' ');
 
     if (member && interaction.channel.permissionsFor(member).has([1n<<13n]) && member.roles.highest.position >= interaction.member.roles.highest.position) {
@@ -41,21 +42,42 @@ export default new Command({
       });
     }
 
+    if (duration > 4 * 7 * 24 * 3_600_000) {
+      return interaction.reply({
+        content: 'Sorry, you can\'t mute for longer than 4 weeks',
+        ephemeral: true,
+      });
+    }
+
     if (member) {
-      await user.send(interaction.markdown(`
+      /* TODO: change back when markdown parser is done
       ::# You've been muted in ${interaction.guild.name}
       reason: ${reason}
       duration: ${duration ? ms(duration, { long: true }) : 'indefinitely'}
-    `, { splash: false }).toMsg()).catch(() => {});
+      */
+      await user.send(interaction.embed({
+        title: `You've been muted in ${interaction.guild.name}`,
+        description: `reason: ${reason}\nduration: ${duration ? ms(duration, { long: true }) : 'indefinitely'}`,
+      }, { splash: false }).toMsg()).catch(() => {});
     }
 
-    await interaction.client.db.Mute.updateOne({ user: user.id, guild: interaction.guild.id }, { until: duration ? Date.now() + duration : Infinity }, { upsert: true });
+    // eslint-disable-next-line camelcase
+    const success = await interaction.client.api.guilds(interaction.guild.id).members(user.id).patch({ reason, data: { communication_disabled_until: new Date(Date.now() + duration) } }).catch(() => {});
 
-    const doc = await interaction.client.db.Config.findOne({ guild: interaction.guild.id });
-    const reply = (!member || await member.roles.add(doc?.muterole, reason).then(() => true).catch(() => false)) ? `Successfully muted ${user.tag} ${duration ? `for ${ms(duration, { long: true })}` : 'indefinitely'}` : `Something went wrong trying to mute ${user.tag}`;
+    if (success) {
+      interaction.client.emit('moderation:mute', {
+        guild: interaction.guild,
+        offender: user,
+        moderator: interaction.user,
+        timestamp: Date.now(),
+        reason, duration,
+      });
+    }
 
     return interaction.reply({
-      content: reply,
+      content: success
+        ? `Successfully muted ${user.tag} ${duration ? `for ${ms(duration, { long: true })}` : 'indefinitely'}`
+        : `Something went wrong trying to mute ${user.tag}`,
       ephemeral: true,
     });
   },

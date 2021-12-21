@@ -26,12 +26,24 @@ export default new Command({
 
   async run(interaction) {
     const user = await interaction.options.getUser('user');
-    const reason = interaction.options.getString('reason', false)||'no reason provided';
+    const reason = interaction.options.getString('reason', false) || `unbanned by ${interaction.user.id}`;
 
-    const reply = await interaction.guild.members.unban(user, { reason }).then(() => `Successfully unbanned ${user.tag}`).catch(() => `Something went wrong trying to unban ${user.tag}`);
+    const success = await interaction.guild.members.unban(user, { reason }).catch(() => {});
+
+    if (success) {
+      interaction.client.emit('moderation:unban', {
+        guild: interaction.guild,
+        offender: user,
+        moderator: interaction.user,
+        timestamp: Date.now(),
+        reason,
+      });
+    }
 
     return interaction.reply({
-      content: reply,
+      content: success
+        ? `Successfully unbanned ${user.tag}`
+        : `Something went wrong trying to unban ${user.tag}`,
       ephemeral: true,
     });
   },

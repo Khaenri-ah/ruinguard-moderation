@@ -14,13 +14,13 @@ export default new Command({
       {
         type: 3,
         name: 'reason',
-        description: 'Enter a common reason. (Default is Banned by <you> on <today>)',
+        description: 'why you are banning these users',
       },
     ],
   },
   flags: [1<<1],
   permissions: {
-    user: [1n<<3n],
+    user: [1n<<2n],
     self: [1n<<2n],
   },
 
@@ -29,19 +29,28 @@ export default new Command({
 
     // set removes duplicates
     const ids = new Set(interaction.options.getString('ids').split(/\D+/));
-    const reason = interaction.options.getString('reason', false)|| `Banned by ${interaction.user.tag} on ${new Date().toLocaleDateString()}`;
+    const reason = interaction.options.getString('reason', false)|| `mass banned by ${interaction.user.id}`;
 
-    let valid = 0;
-    let invalid = 0;
+    const success = [];
+    const fail = [];
     for (const id of ids) {
       await interaction.guild.members.ban(id, { reason })
-        .then(() => valid++)
-        .catch(() => invalid++);
+        .then(() => success.push(id))
+        .catch(() => fail.push(id));
     }
+
+    interaction.client.emit('moderation:massBan', {
+      guild: interaction.guild,
+      offenders: ids,
+      moderator: interaction.user,
+      timestamp: Date.now(),
+      success, fail, reason,
+    });
+
     return interaction.edit({
       content: `
-        banned ${valid} users
-        failed to ban ${invalid} users
+        banned ${success.length} users
+        failed to ban ${fail.length} users
       `,
       ephemeral: true,
     });

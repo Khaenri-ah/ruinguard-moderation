@@ -14,14 +14,21 @@ export default new Command({
   },
 
   async run(interaction) {
-    const user = interaction.options.getUser('user')??interaction.user;
+    const user = interaction.options.getUser('user')||interaction.user;
     await user.fetch(true);
-    return interaction.markdown(`
-      tmb:${user.displayAvatarURL({ dynamic: true, format: 'png', size: 512 })}
-      clr:0x${user.accentColor.toString(16)}
-      ::# ${user.tag}
-      #-User ID
-      ${user.id}
-    `);
+
+    /* TODO: change back when markdown parser is done
+    tmb:${user.displayAvatarURL({ dynamic: true, format: 'png', size: 512 })}
+    clr:0x${user.accentColor.toString(16)}
+    ::# ${user.tag}
+    #-User ID
+    ${user.id}
+    */
+    return interaction.embed({
+      thumbnail: user.displayAvatarURL({ dynamic: true, format: 'png', size: 512 }),
+      color: user.accentColor,
+      title: user.tag,
+      fields: [{ name: 'User ID', value: user.id }],
+    });
   },
 });

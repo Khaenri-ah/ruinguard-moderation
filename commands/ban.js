@@ -27,7 +27,7 @@ export default new Command({
   async run(interaction) {
     const user = await interaction.options.getUser('user');
     const member = await interaction.guild.members.fetch(user.id).catch(() => {});
-    const reason = interaction.options.getString('reason', false)||'no reason provided';
+    const reason = interaction.options.getString('reason', false) || `banned by ${interaction.user.id}`;
 
     if (member && interaction.channel.permissionsFor(member).has([1n<<2n]) && member.roles.highest.position >= interaction.member.roles.highest.position) {
       return interaction.reply({
@@ -43,16 +43,32 @@ export default new Command({
     }
 
     if (member) {
-      await user.send(interaction.markdown(`
+      /* TODO: change back when markdown parser is done
       ::# You've been banned from ${interaction.guild.name}
       reason: ${reason}
-    `, { splash: false }).toMsg()).catch(() => {});
+      */
+      await user.send(interaction.embed({
+        title: `You've been banned from ${interaction.guild.name}`,
+        description: `reason: ${reason}`,
+      }, { splash: false })).catch(() => {});
     }
 
-    const reply = await interaction.guild.members.ban(user, { reason }).then(() => `Successfully banned ${user.tag}`).catch(() => `Something went wrong trying to ban ${user.tag}`);
+    const success = await interaction.guild.members.ban(user, { reason }).catch(() => {});
+
+    if (success) {
+      interaction.client.emit('moderation:ban', {
+        guild: interaction.guild,
+        offender: user,
+        moderator: interaction.user,
+        timestamp: Date.now(),
+        reason,
+      });
+    }
 
     return interaction.reply({
-      content: reply,
+      content: success
+        ? `Successfully banned ${user.tag}`
+        : `Something went wrong trying to ban ${user.tag}`,
       ephemeral: true,
     });
   },

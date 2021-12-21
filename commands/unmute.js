@@ -19,14 +19,14 @@ export default new Command({
   },
   flags: [1<<1],
   permissions: {
-    user: [1n<<13n],
-    self: [1n<<28n],
+    user: [1n<<40n],
+    self: [1n<<40n],
   },
 
   async run(interaction) {
     const user = await interaction.options.getUser('user');
     const member = await interaction.guild.members.fetch(user.id).catch(() => {});
-    const reason = interaction.options.getString('reason', false)||'no reason provided';
+    const reason = interaction.options.getString('reason', false) || `unmuted by ${interaction.user.id}`;
 
     if (member && interaction.channel.permissionsFor(member).has([1n<<13n]) && member.roles.highest.position >= interaction.member.roles.highest.position) {
       return interaction.reply({
@@ -35,13 +35,23 @@ export default new Command({
       });
     }
 
-    await interaction.client.db.Mute.deleteOne({ user: user.id });
+    // eslint-disable-next-line camelcase
+    const success = await interaction.client.api.guilds(interaction.guild.id).members(user.id).patch({ reason, data: { communication_disabled_until: null } }).catch(() => {});
 
-    const doc = await interaction.client.db.Config.findOne({ guild: interaction.guild.id });
-    const reply = (!member || await member.roles.remove(doc?.muterole, reason).then(() => true).catch(() => false)) ? `Successfully unmuted ${user.tag}` : `Something went wrong trying to unmute ${user.tag}`;
+    if (success) {
+      interaction.client.emit('moderation:unmute', {
+        guild: interaction.guild,
+        offender: user,
+        moderator: interaction.user,
+        timestamp: Date.now(),
+        reason,
+      });
+    }
 
     return interaction.reply({
-      content: reply,
+      content: success
+        ? `Successfully unmuted ${user.tag}`
+        : `Something went wrong trying to unmute ${user.tag}`,
       ephemeral: true,
     });
   },

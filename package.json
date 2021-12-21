@@ -1,6 +1,6 @@
 {
   "name": "@ruinguard/moderation",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A moderation module for RuinGuard",
   "keywords": [
     "modular",
